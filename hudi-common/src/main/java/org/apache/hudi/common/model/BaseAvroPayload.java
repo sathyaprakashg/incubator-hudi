@@ -18,6 +18,7 @@
 
 package org.apache.hudi.common.model;
 
+import org.apache.avro.Schema;
 import org.apache.hudi.avro.HoodieAvroUtils;
 import org.apache.hudi.exception.HoodieException;
 
@@ -40,12 +41,18 @@ public abstract class BaseAvroPayload implements Serializable {
   protected final Comparable orderingVal;
 
   /**
+   * Schema used to convert avro to bytes.
+   */
+  protected final Schema writerSchema;
+
+  /**
    * Instantiate {@link BaseAvroPayload}.
    *
    * @param record      Generic record for the payload.
    * @param orderingVal {@link Comparable} to be used in pre combine.
    */
   public BaseAvroPayload(GenericRecord record, Comparable orderingVal) {
+    this.writerSchema = record != null ? record.getSchema() : null;
     this.recordBytes = record != null ? HoodieAvroUtils.avroToBytes(record) : new byte[0];
     this.orderingVal = orderingVal;
     if (orderingVal == null) {
