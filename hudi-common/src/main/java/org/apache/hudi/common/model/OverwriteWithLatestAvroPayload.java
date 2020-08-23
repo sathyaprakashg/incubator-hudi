@@ -33,7 +33,7 @@ import java.io.IOException;
  * 1. preCombine - Picks the latest delta record for a key, based on an ordering field 2.
  * combineAndGetUpdateValue/getInsertValue - Simply overwrites storage with latest delta record
  */
-public class OverwriteWithLatestAvroPayload extends BaseAvroPayload
+public class OverwriteWithLatestAvroPayload extends BaseAvroPayloadWithSchema
     implements HoodieRecordPayload<OverwriteWithLatestAvroPayload> {
 
   /**
@@ -67,7 +67,7 @@ public class OverwriteWithLatestAvroPayload extends BaseAvroPayload
     if (recordBytes.length == 0) {
       return Option.empty();
     }
-    IndexedRecord indexedRecord = HoodieAvroUtils.bytesToAvro(recordBytes, schema);
+    IndexedRecord indexedRecord = HoodieAvroUtils.bytesToAvro(recordBytes, writerSchema, schema);
     if (isDeleteRecord((GenericRecord) indexedRecord)) {
       return Option.empty();
     } else {
