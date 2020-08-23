@@ -47,8 +47,7 @@ import org.apache.hudi.exception.HoodieDeltaStreamerException;
 import org.apache.hudi.utilities.deltastreamer.HoodieDeltaStreamer.Config;
 import org.apache.hudi.utilities.callback.kafka.HoodieWriteCommitKafkaCallback;
 import org.apache.hudi.utilities.callback.kafka.HoodieWriteCommitKafkaCallbackConfig;
-import org.apache.hudi.utilities.schema.DelegatingSchemaProvider;
-import org.apache.hudi.utilities.schema.RowBasedSchemaProvider;
+import org.apache.hudi.utilities.schema.InMemorySchemaProvider;
 import org.apache.hudi.utilities.schema.SchemaProvider;
 import org.apache.hudi.utilities.sources.InputBatch;
 import org.apache.hudi.utilities.transform.Transformer;
@@ -296,7 +295,8 @@ public class DeltaSync implements Serializable {
 
     final Option<JavaRDD<GenericRecord>> avroRDDOptional;
     final String checkpointStr;
-    final SchemaProvider schemaProvider;
+    SchemaProvider schemaProvider;
+
     if (transformer.isPresent()) {
       // Transformation is needed. Fetch New rows in Row Format, apply transformation and then convert them
       // to generic records for writing
@@ -306,6 +306,8 @@ public class DeltaSync implements Serializable {
       Option<Dataset<Row>> transformed =
           dataAndCheckpoint.getBatch().map(data -> transformer.get().apply(jssc, sparkSession, data, props));
       checkpointStr = dataAndCheckpoint.getCheckpointForNextBatch();
+      schemaProvider = dataAndCheckpoint.getSchemaProvider();
+
       if (this.userProvidedSchemaProvider != null && this.userProvidedSchemaProvider.getTargetSchema() != null) {
         // If the target schema is specified through Avro schema,
         // pass in the schema for the Row-to-Avro conversion
@@ -314,16 +316,7 @@ public class DeltaSync implements Serializable {
             .map(t -> AvroConversionUtils.createRdd(
                 t, this.userProvidedSchemaProvider.getTargetSchema(),
                 HOODIE_RECORD_STRUCT_NAME, HOODIE_RECORD_NAMESPACE).toJavaRDD());
-        schemaProvider = this.userProvidedSchemaProvider;
       } else {
-        // Use Transformed Row's schema if not overridden. If target schema is not specified
-        // default to RowBasedSchemaProvider
-        schemaProvider =
-            transformed
-                .map(r -> (SchemaProvider) new DelegatingSchemaProvider(props, jssc,
-                    dataAndCheckpoint.getSchemaProvider(),
-                    new RowBasedSchemaProvider(r.schema())))
-                .orElse(dataAndCheckpoint.getSchemaProvider());
         avroRDDOptional = transformed
             .map(t -> AvroConversionUtils.createRdd(
                 t, HOODIE_RECORD_STRUCT_NAME, HOODIE_RECORD_NAMESPACE).toJavaRDD());
@@ -354,6 +347,8 @@ public class DeltaSync implements Serializable {
           (Comparable) DataSourceUtils.getNestedFieldVal(gr, cfg.sourceOrderingField, false));
       return new HoodieRecord<>(keyGenerator.getKey(gr), payload);
     });
+
+    schemaProvider = new InMemorySchemaProvider(avroRDD.first().getSchema());
 
     return Pair.of(schemaProvider, Pair.of(checkpointStr, records));
   }
