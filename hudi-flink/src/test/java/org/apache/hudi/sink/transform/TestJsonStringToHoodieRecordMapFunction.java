@@ -18,6 +18,7 @@
 
 package org.apache.hudi.sink.transform;
 
+import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.OverwriteWithLatestAvroPayload;
@@ -70,6 +71,7 @@ public class TestJsonStringToHoodieRecordMapFunction extends HoodieFlinkClientTe
     props.put(KeyGeneratorOptions.RECORDKEY_FIELD_OPT_KEY, "_row_key");
     props.put(KeyGeneratorOptions.PARTITIONPATH_FIELD_OPT_KEY, "current_date");
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+    env.registerTypeWithKryoSerializer(OverwriteWithLatestAvroPayload.class, JavaSerializer.class);
     env.setParallelism(1);
 
     SimpleTestSinkFunction.valuesList.clear();
