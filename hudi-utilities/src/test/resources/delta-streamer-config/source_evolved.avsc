@@ -52,7 +52,7 @@
   }, {
     "name" : "weight",
     "type" : "float"
-  }, {
+  },{
     "name" : "nation",
     "type" : "bytes"
   },{
@@ -64,9 +64,10 @@
   },{
     "name" : "current_ts",
     "type" : {
-      "type" : "long"
+      "type" : "long",
+      "logicalType" : "timestamp-micros"
       }
-  }, {
+  },{
     "name" : "height",
     "type" : {
       "type" : "fixed",
@@ -82,12 +83,13 @@
       "type" : "map",
       "values": "string"
     }
-  }, {
+  },
+  {
     "name" : "fare",
     "type" : {
       "type" : "record",
       "name" : "fare",
-       "fields" : [
+      "fields" : [
         {
          "name" : "amount",
          "type" : "double"
@@ -96,8 +98,16 @@
          "name" : "currency",
          "type" : "string"
         }
-       ]
+      ]
     }
+  },
+  {
+      "name": "evoluted_optional_union_field",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
   },
   {
     "name" : "tip_history",
@@ -120,13 +130,9 @@
     }
   },
   {
-     "name" : "_hoodie_is_deleted",
-     "type" : "boolean",
-     "default" : false
-  },
-  {
-     "name" : "haversine_distance",
-     "type" : "double"
+    "name" : "_hoodie_is_deleted",
+    "type" : "boolean",
+    "default" : false
   }]
 }
 

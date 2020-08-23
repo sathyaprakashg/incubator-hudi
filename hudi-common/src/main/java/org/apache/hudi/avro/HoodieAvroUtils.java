@@ -21,6 +21,7 @@ package org.apache.hudi.avro;
 import org.apache.avro.JsonProperties;
 import java.time.LocalDate;
 import org.apache.avro.LogicalTypes;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData.Record;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.util.StringUtils;
@@ -127,10 +128,57 @@ public class HoodieAvroUtils {
    * Convert serialized bytes back into avro record.
    */
   public static GenericRecord bytesToAvro(byte[] bytes, Schema writerSchema, Schema readerSchema) throws IOException {
+    readerSchema = addNamespaceToFixedField(writerSchema, readerSchema);
     BinaryDecoder decoder = DecoderFactory.get().binaryDecoder(bytes, reuseDecoder.get());
     reuseDecoder.set(decoder);
     GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>(writerSchema, readerSchema);
     return reader.read(null, decoder);
+  }
+
+  /**
+   * Add namespace to fixed field.
+   * org.apache.spark.sql.avro.SchemaConverters.toAvroType method adds namespace to fixed avro field
+   * So, we need to add namespace to readerSchema as well inorder to avoid error like
+   * org.apache.avro.AvroTypeException: Found hoodie.source.hoodie_source.height.fixed, expecting fixed
+   * https://github.com/apache/spark/blob/master/external/avro/src/main/scala/org/apache/spark/sql/avro/SchemaConverters.scala#L177
+   */
+  private static Schema addNamespaceToFixedField(Schema writerSchema, Schema readerSchema) {
+    if (writerSchema.equals(readerSchema)) {
+      return readerSchema;
+    }
+
+    List<Schema.Field> fields = new ArrayList<>();
+    Boolean isSchemaChanged = false;
+
+    for (Schema.Field field : readerSchema.getFields()) {
+      Schema fieldSchema = field.schema();
+      if (fieldSchema.getType().getName().equals("fixed")
+              && fieldSchema.getLogicalType() != null
+              && fieldSchema.getLogicalType().getName().equals("decimal")
+              && writerSchema.getField(field.name()) != null
+              && writerSchema.getField(field.name()).schema() != null
+              && writerSchema.getField(field.name()).schema().getNamespace() != null
+              && !writerSchema.getField(field.name()).schema().getNamespace().equals("")) {
+
+        isSchemaChanged = true;
+
+        //TODO Move constant in RowBasedSchemaProvider to common package and use that
+        final String HOODIE_RECORD_NAMESPACE = "hoodie.source";
+        final String HOODIE_RECORD_STRUCT_NAME = "hoodie_source";
+
+        String name = HOODIE_RECORD_NAMESPACE + "." + HOODIE_RECORD_STRUCT_NAME + "." + field.name() + "." + fieldSchema.getName();
+        LogicalTypes.Decimal avroType = (LogicalTypes.Decimal)fieldSchema.getLogicalType();
+        fieldSchema = avroType.addToSchema(SchemaBuilder.fixed(name).size(fieldSchema.getFixedSize()));
+      }
+
+      fields.add(new Schema.Field(field.name(), fieldSchema, field.doc(), field.defaultVal()));
+    }
+
+    if (isSchemaChanged) {
+      return Schema.createRecord(readerSchema.getName(), "", readerSchema.getNamespace(), false, fields);
+    } else {
+      return readerSchema;
+    }
   }
 
   /**
