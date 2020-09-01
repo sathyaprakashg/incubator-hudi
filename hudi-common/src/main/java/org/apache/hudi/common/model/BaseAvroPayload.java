@@ -18,6 +18,7 @@
 
 package org.apache.hudi.common.model;
 
+import org.apache.avro.Schema;
 import org.apache.hudi.avro.HoodieAvroUtils;
 import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.exception.HoodieIOException;
@@ -42,6 +43,11 @@ public abstract class BaseAvroPayload implements Serializable {
   protected final Comparable orderingVal;
 
   /**
+   * Schema used to convert avro to bytes.
+   */
+  protected final Schema writerSchema;
+
+  /**
    * Instantiate {@link BaseAvroPayload}.
    *
    * @param record      Generic record for the payload.
@@ -49,6 +55,7 @@ public abstract class BaseAvroPayload implements Serializable {
    */
   public BaseAvroPayload(GenericRecord record, Comparable orderingVal) {
     try {
+      this.writerSchema = record != null ? record.getSchema() : null;
       this.recordBytes = record != null ? HoodieAvroUtils.avroToBytes(record) : new byte[0];
     } catch (IOException io) {
       throw new HoodieIOException("Cannot convert GenericRecord to bytes", io);
