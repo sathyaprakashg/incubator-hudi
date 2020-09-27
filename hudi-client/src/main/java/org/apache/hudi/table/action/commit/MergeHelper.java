@@ -42,6 +42,8 @@ import org.apache.hudi.table.HoodieTable;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -50,6 +52,8 @@ import java.util.Iterator;
  * Helper to read records from previous version of parquet and run Merge.
  */
 public class MergeHelper {
+
+  private static final Logger LOG = LogManager.getLogger(HoodieMergeHandle.class);
 
   /**
    * Read records from previous version of base file and merge.
@@ -67,6 +71,7 @@ public class MergeHelper {
     final GenericDatumReader<GenericRecord> gReader;
     Schema readSchema;
     if (externalSchemaTransformation || baseFile.getBootstrapBaseFile().isPresent()) {
+      LOG.error("test123");
       readSchema = HoodieFileReaderFactory.getFileReader(table.getHadoopConf(), upsertHandle.getOldFilePath()).getSchema();
       gWriter = new GenericDatumWriter<>(readSchema);
       gReader = new GenericDatumReader<>(readSchema, upsertHandle.getWriterSchemaWithMetafields());
